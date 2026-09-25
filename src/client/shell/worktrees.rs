@@ -527,6 +527,7 @@ impl ClientShellState {
             }
             (
                 PendingEndpointKind::Generic
+                | PendingEndpointKind::NewProject
                 | PendingEndpointKind::ProductAnnouncementDismiss { .. }
                 | PendingEndpointKind::ReleaseNotesDismiss
                 | PendingEndpointKind::PopupCommand

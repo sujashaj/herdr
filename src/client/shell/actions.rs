@@ -568,6 +568,20 @@ impl ClientShellState {
         }
         match pending.kind {
             PendingEndpointKind::Generic => {}
+            PendingEndpointKind::NewProject => {
+                if let Ok(crate::api::schema::ResponseResult::WorkspaceCreated {
+                    workspace, ..
+                }) = &result
+                {
+                    if self.overlay.is_none() {
+                        self.open_new_project_name_overlay(
+                            workspace.workspace_id.clone(),
+                            workspace.label.clone(),
+                        );
+                        return (true, Vec::new());
+                    }
+                }
+            }
             PendingEndpointKind::PaneLinkResolve { .. } => unreachable!("handled above"),
             PendingEndpointKind::ProductAnnouncementDismiss { version, id } => {
                 return match result {

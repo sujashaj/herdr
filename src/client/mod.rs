@@ -2186,6 +2186,32 @@ async fn run_client_loop(
                             &mut write_stream,
                             &mut prefix_input_source,
                         )?;
+                        // Tree mode names agent panes after their first session title. Renames
+                        // wait while an endpoint handoff is in progress.
+                        let title_locks = (pending_activation.is_none()
+                            && write_stream.active_id() == &endpoint_id)
+                            .then(|| {
+                                state
+                                    .shell
+                                    .as_mut()
+                                    .map(|shell| shell.lock_first_session_titles())
+                            })
+                            .flatten()
+                            .filter(|outcome| !outcome.actions.is_empty());
+                        if let Some(outcome) = title_locks {
+                            if finish_client_shell_input(
+                                &mut state,
+                                outcome,
+                                None,
+                                &mut write_stream,
+                                &mut pending_activation,
+                                &mut endpoint_commands,
+                                &mut prefix_input_source,
+                                &mut scheduled_activation,
+                            )? {
+                                return Ok(());
+                            }
+                        }
                         if matches!(
                             activation_progress,
                             Some(endpoint::SurfaceActivationProgress::Ready)

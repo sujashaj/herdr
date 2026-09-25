@@ -27,12 +27,16 @@ pub fn derive_label_from_cwd(cwd: &Path) -> String {
         .unwrap_or_else(|| fallback_label_from_cwd(cwd))
 }
 
+/// Automatic label for a folder that is not a git checkout. The home directory is labelled
+/// `home` rather than `~` so it reads as a project name.
 pub fn fallback_label_from_cwd(cwd: &Path) -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        let home = Path::new(&home);
-        if cwd == home {
-            return "~".to_string();
-        }
+    let home = std::env::var_os("HOME");
+    fallback_label_with_home(cwd, home.as_deref().map(Path::new))
+}
+
+fn fallback_label_with_home(cwd: &Path, home: Option<&Path>) -> String {
+    if home.is_some_and(|home| cwd == home) {
+        return "home".to_string();
     }
 
     cwd.file_name()
@@ -371,6 +375,18 @@ mod tests {
 
     use super::*;
     use crate::workspace::git::test_support::run_git;
+
+    #[test]
+    fn fallback_label_names_the_home_directory_home() {
+        let home = Path::new("/Users/suja");
+        assert_eq!(fallback_label_with_home(home, Some(home)), "home");
+        assert_eq!(
+            fallback_label_with_home(Path::new("/Users/suja/job-search"), Some(home)),
+            "job-search"
+        );
+        assert_eq!(fallback_label_with_home(home, None), "suja");
+        assert_eq!(fallback_label_with_home(Path::new("/"), Some(home)), "/");
+    }
 
     fn temp_test_dir(name: &str) -> PathBuf {
         let unique = format!(

@@ -28,9 +28,6 @@ pub(super) struct ClientChromePreferences {
     pub(super) collapsed_groups: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) remote_collapsed_groups: Vec<ClientRemoteCollapsedGroups>,
-    /// Closed project and tab rows in the tree sidebar, keyed by workspace or tab ID.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(super) tree_collapsed: Vec<String>,
 }
 
 pub(super) fn path_for_local_endpoint(socket_path: &Path) -> PathBuf {
@@ -123,29 +120,17 @@ mod tests {
 
         assert_eq!(preferences.collapsed_groups, ["/repo"]);
         assert!(preferences.remote_collapsed_groups.is_empty());
-        assert!(preferences.tree_collapsed.is_empty());
     }
 
     #[test]
-    fn tree_collapsed_rows_round_trip() {
-        let path = std::env::temp_dir().join(format!(
-            "herdr-shell-tree-preferences-{}.json",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_file(&path);
-        store(
-            &path,
-            ClientChromePreferences {
-                tree_collapsed: vec!["w1:t2".to_owned(), "w3".to_owned()],
-                ..ClientChromePreferences::default()
-            },
-        )
-        .expect("store tree preferences");
-        assert_eq!(
-            load(&path).map(|saved| saved.tree_collapsed),
-            Some(vec!["w1:t2".to_owned(), "w3".to_owned()])
-        );
-        std::fs::remove_file(path).expect("remove preferences");
+    fn old_tree_collapsed_rows_are_ignored() {
+        let preferences: ClientChromePreferences =
+            serde_json::from_str(r#"{"sidebar_width":30,"tree_collapsed":["w1:t2","w3"]}"#)
+                .expect("preferences with retired tree_collapsed field");
+
+        assert_eq!(preferences.sidebar_width, Some(30));
+        let saved = serde_json::to_string(&preferences).expect("encode preferences");
+        assert!(!saved.contains("tree_collapsed"), "{saved}");
     }
 
     #[test]

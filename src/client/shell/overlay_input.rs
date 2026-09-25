@@ -356,6 +356,23 @@ impl ClientShellState {
         }));
     }
 
+    /// Opens the naming prompt for a project just created from the tree sidebar, prefilled with
+    /// its automatic name.
+    pub(super) fn open_new_project_name_overlay(
+        &mut self,
+        workspace_id: String,
+        auto_name: String,
+    ) {
+        self.overlay = Some(ClientShellOverlay::Rename(ClientRenameOverlay {
+            title: "name project",
+            input: TextEditor::new(&auto_name, true),
+            target: ClientRenameTarget::NewProject {
+                workspace_id,
+                auto_name,
+            },
+        }));
+    }
+
     pub(super) fn open_rename_workspace_overlay(&mut self) {
         let Some(snapshot) = self.snapshot.as_deref() else {
             return;
@@ -951,6 +968,17 @@ impl ClientShellState {
                 },
             )),
             ClientRenameTarget::Workspace { workspace_id } => (!trimmed.is_empty()).then(|| {
+                crate::api::schema::Method::WorkspaceRename(
+                    crate::api::schema::WorkspaceRenameParams {
+                        workspace_id,
+                        label: trimmed.to_owned(),
+                    },
+                )
+            }),
+            ClientRenameTarget::NewProject {
+                workspace_id,
+                auto_name,
+            } => (!trimmed.is_empty() && trimmed != auto_name).then(|| {
                 crate::api::schema::Method::WorkspaceRename(
                     crate::api::schema::WorkspaceRenameParams {
                         workspace_id,

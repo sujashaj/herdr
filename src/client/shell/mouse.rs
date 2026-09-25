@@ -2047,6 +2047,26 @@ impl ClientShellState {
                     return;
                 }
                 if super::contains(self.hits.new_workspace, point) {
+                    if self.config.sidebar_mode == crate::config::SidebarModeConfig::Tree
+                        && !self.config.prompt_new_workspace_name
+                    {
+                        // Tree mode creates the project straight away and then offers to name it.
+                        self.push_endpoint_method_with_kind(
+                            crate::api::schema::Method::WorkspaceCreate(
+                                crate::api::schema::WorkspaceCreateParams {
+                                    source_workspace_id: self.workspace_action_id(),
+                                    cwd: None,
+                                    focus: true,
+                                    label: None,
+                                    env: Default::default(),
+                                },
+                            ),
+                            PendingEndpointKind::NewProject,
+                            outcome,
+                        );
+                        outcome.repaint = true;
+                        return;
+                    }
                     self.record_binding(
                         crate::input::KeybindMatch::Action(
                             crate::input::KeybindAction::NewWorkspace,
@@ -2094,18 +2114,6 @@ impl ClientShellState {
                 });
                 if let Some((endpoint_id, key)) = group_toggle {
                     self.toggle_collapsed_group(&endpoint_id, key);
-                    outcome.repaint = true;
-                    self.persist_chrome_preferences(outcome);
-                    return;
-                }
-                let tree_toggle = self
-                    .hits
-                    .tree_toggles
-                    .iter()
-                    .find(|(rect, _)| super::contains(*rect, point))
-                    .map(|(_, id)| id.clone());
-                if let Some(id) = tree_toggle {
-                    self.toggle_tree_row(id);
                     outcome.repaint = true;
                     self.persist_chrome_preferences(outcome);
                     return;
