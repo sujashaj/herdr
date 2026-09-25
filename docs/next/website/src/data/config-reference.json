@@ -1061,6 +1061,16 @@
           ]
         },
         {
+          "key": "ui.sidebar.mode",
+          "type": "enum",
+          "default": "flat",
+          "description": "Expanded sidebar presentation. \"tree\" shows a collapsible Project → Tab → Pane tree and hides the Agents section.",
+          "values": [
+            "flat",
+            "tree"
+          ]
+        },
+        {
           "key": "ui.sidebar.agents.row_gap",
           "type": "integer",
           "default": "0",

@@ -56,7 +56,23 @@ pub(crate) fn render_collapsed_sidebar(
     let selection_background = workspace_selection_background(palette);
     let active_background = workspace_active_background(palette, selected_workspace_id.is_some());
     render_sidebar_background(buffer, area, palette);
-    let (workspace_area, divider_y, detail_area) = collapsed_sidebar_sections(area);
+    let (workspace_area, divider_y, detail_area) =
+        if config.sidebar_mode == crate::config::SidebarModeConfig::Tree {
+            // Tree mode hides the Agents section in both sidebar widths.
+            let content = Rect::new(area.x, area.y, area.width.saturating_sub(1), area.height);
+            (
+                Rect::new(
+                    content.x,
+                    content.y,
+                    content.width,
+                    content.height.saturating_sub(1),
+                ),
+                None,
+                Rect::default(),
+            )
+        } else {
+            collapsed_sidebar_sections(area)
+        };
     for (index, workspace) in snapshot
         .workspaces
         .iter()
@@ -204,6 +220,12 @@ pub(crate) fn render_sidebar(
     state: &mut ShellRenderState<'_>,
     hits: &mut ShellHitMap,
 ) {
+    if config.sidebar_mode == crate::config::SidebarModeConfig::Tree {
+        super::super::tree_sidebar::render_tree_sidebar(
+            buffer, area, snapshot, config, state, hits,
+        );
+        return;
+    }
     let palette = &config.palette;
     render_sidebar_background(buffer, area, palette);
     hits.sidebar_divider = if area.is_empty() {

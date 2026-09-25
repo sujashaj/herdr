@@ -359,6 +359,15 @@ status_indicators = "symbols"
 
 The symbols are static, so this option does not enable spinner animation.
 
+### Sidebar tree mode
+
+Set `mode = "tree"` to replace the expanded sidebar with a Project → Tab → Pane tree. Each project is a workspace, tabs show their folder, and panes show their agent or label with a status dot (● working or blocked, ○ idle or done). Click ▾ or ▸ to open or close a project or tab; closed rows show their pane count and stay closed across restarts. Tree mode hides the Agents section. The default, `"flat"`, keeps the Spaces and Agents sections.
+
+```toml
+[ui.sidebar]
+mode = "tree"
+```
+
 ### Sidebar row layouts
 
 The expanded desktop sidebar renders each inner array in `rows` as one line. These are the complete default layouts:

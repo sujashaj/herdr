@@ -475,9 +475,22 @@ impl Default for SpacesSidebarConfig {
     }
 }
 
+/// Expanded sidebar presentation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SidebarModeConfig {
+    /// Spaces list above the Agents section.
+    #[default]
+    Flat,
+    /// Collapsible Project → Tab → Pane tree without the Agents section.
+    Tree,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct SidebarConfig {
+    /// Expanded sidebar presentation. Saved values are "flat" or "tree". Default: "flat".
+    pub mode: SidebarModeConfig,
     pub agents: AgentsSidebarConfig,
     pub spaces: SpacesSidebarConfig,
 }
@@ -485,6 +498,15 @@ pub struct SidebarConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sidebar_mode_defaults_to_flat_and_accepts_tree() {
+        assert_eq!(SidebarConfig::default().mode, SidebarModeConfig::Flat);
+        let config: SidebarConfig = toml::from_str("mode = \"tree\"").expect("tree mode");
+        assert_eq!(config.mode, SidebarModeConfig::Tree);
+        assert_eq!(config.spaces, SpacesSidebarConfig::default());
+        assert!(toml::from_str::<SidebarConfig>("mode = \"forest\"").is_err());
+    }
 
     #[test]
     fn defaults_match_the_compact_agent_and_existing_space_layouts() {

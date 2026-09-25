@@ -21,6 +21,9 @@ pub(crate) struct ClientShellConfig {
     pub(super) mobile_width_threshold: u16,
     pub(super) tab_bar_position: TabBarPositionConfig,
     pub(super) hide_tab_bar_when_single_tab: bool,
+    pub(super) sidebar_mode: crate::config::SidebarModeConfig,
+    /// Home directory captured once at startup so tree rows can shorten paths without I/O.
+    pub(super) home_dir: Option<String>,
     pub(super) spaces: SpacesSidebarConfig,
     pub(super) agents: crate::config::AgentsSidebarConfig,
     pub(super) agent_panel_sort: crate::config::AgentPanelSortConfig,
@@ -94,6 +97,10 @@ pub(super) struct ShellHitMap {
     pub(super) popup: Option<PaneHit>,
     pub(super) pane_splits: Vec<PaneSplitHit>,
     pub(super) agents: Vec<(Rect, String)>,
+    /// Tree sidebar open/close glyphs, keyed by the workspace or tab ID they collapse.
+    pub(super) tree_toggles: Vec<(Rect, String)>,
+    /// Tree sidebar tab and pane rows. Project rows use `workspaces`.
+    pub(super) tree_targets: Vec<(Rect, ClientEndpointFocusTarget)>,
     pub(super) endpoint_agents: Vec<(Rect, ClientEndpointId, String)>,
     pub(super) agent_body: Rect,
     pub(super) agent_scrollbar: Rect,
@@ -882,6 +889,7 @@ pub(crate) struct ClientShellState {
     pub(super) tab_press: Option<ClientTabPress>,
     pub(super) collapsed_groups: HashSet<String>,
     pub(super) remote_collapsed_groups: HashMap<ClientEndpointId, HashSet<String>>,
+    pub(super) tree_collapsed: HashSet<String>,
     pub(super) workspace_scroll: usize,
     pub(super) agent_scroll: usize,
     pub(super) pending_agent_reveal: Option<(ClientEndpointId, String)>,
@@ -1056,6 +1064,7 @@ impl ClientShellState {
             tab_press: None,
             collapsed_groups: preferences.collapsed_groups.into_iter().collect(),
             remote_collapsed_groups,
+            tree_collapsed: preferences.tree_collapsed.into_iter().collect(),
             workspace_scroll: 0,
             agent_scroll: 0,
             pending_agent_reveal: None,
@@ -1180,6 +1189,23 @@ impl ClientShellState {
         };
         if !groups.remove(&key) {
             groups.insert(key);
+        }
+    }
+
+    /// Opens or closes a tree sidebar project or tab row. IDs that no longer exist in the
+    /// snapshot are dropped so the persisted set stays bounded.
+    pub(super) fn toggle_tree_row(&mut self, id: String) {
+        if !self.tree_collapsed.remove(&id) {
+            self.tree_collapsed.insert(id);
+        }
+        if let Some(snapshot) = self.snapshot.as_deref() {
+            self.tree_collapsed.retain(|id| {
+                snapshot
+                    .workspaces
+                    .iter()
+                    .any(|workspace| workspace.workspace_id == *id)
+                    || snapshot.tabs.iter().any(|tab| tab.tab_id == *id)
+            });
         }
     }
 

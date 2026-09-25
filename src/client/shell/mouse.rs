@@ -2098,6 +2098,18 @@ impl ClientShellState {
                     self.persist_chrome_preferences(outcome);
                     return;
                 }
+                let tree_toggle = self
+                    .hits
+                    .tree_toggles
+                    .iter()
+                    .find(|(rect, _)| super::contains(*rect, point))
+                    .map(|(_, id)| id.clone());
+                if let Some(id) = tree_toggle {
+                    self.toggle_tree_row(id);
+                    outcome.repaint = true;
+                    self.persist_chrome_preferences(outcome);
+                    return;
+                }
                 let workspace_press = self
                     .hits
                     .workspaces
@@ -2111,6 +2123,16 @@ impl ClientShellState {
                     });
                 if let Some(workspace_press) = workspace_press {
                     self.workspace_press = Some(workspace_press);
+                    return;
+                }
+                let tree_target = self
+                    .hits
+                    .tree_targets
+                    .iter()
+                    .find(|(rect, _)| super::contains(*rect, point))
+                    .map(|(_, target)| target.clone());
+                if let Some(target) = tree_target {
+                    self.focus_or_activate(ClientEndpointId::Local, target, outcome);
                     return;
                 }
                 let tab_press = self
