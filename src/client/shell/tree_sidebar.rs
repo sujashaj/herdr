@@ -26,6 +26,7 @@ const TAB_MARK: &str = "■";
 const PROJECT_MARK: &str = "●";
 const PROJECT_RULE: &str = "─";
 const IDLE_TAB_MARK: &str = "·";
+const PENDING_PANE_MARK: &str = "○";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TreeRowKind {
@@ -637,10 +638,15 @@ fn row_mark(row: &TreeRow<'_>, palette: &Palette) -> Option<(&'static str, Color
                 status_color(status, palette),
             )
         })),
-        TreeRowKind::Pane => {
-            let status = status?;
-            Some((status_mark(status)?, status_color(status, palette)))
-        }
+        TreeRowKind::Pane => match status {
+            Some(status) => Some((status_mark(status)?, status_color(status, palette))),
+            // An agent whose state isn't known yet (Herdr waits a few seconds after startup) gets
+            // a grey ring, so its icon doesn't shift right when the real status arrives.
+            None if row.icon.is_some_and(|icon| icon != PaneIcon::Terminal) => {
+                Some((PENDING_PANE_MARK, palette.overlay0))
+            }
+            None => None,
+        },
         TreeRowKind::Gap => None,
     }
 }

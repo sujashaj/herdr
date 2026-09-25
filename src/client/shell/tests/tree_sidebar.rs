@@ -596,3 +596,19 @@ fn default_sidebar_never_names_panes() {
     assert!(outcome.actions.is_empty());
     assert!(state.settled_pane_names.is_empty());
 }
+
+#[test]
+fn agent_pane_without_a_status_keeps_its_icon_in_place() {
+    let settled = claude_row_with_status(AgentStatus::Working);
+    let starting = claude_row_with_status(AgentStatus::Unknown);
+    assert_eq!(
+        column_of(&starting, "○"),
+        5,
+        "grey ring holds the dot slot: {starting:?}"
+    );
+    assert_eq!(
+        column_of(&starting, "✻"),
+        column_of(&settled, "✻"),
+        "{starting:?} vs {settled:?}"
+    );
+}
