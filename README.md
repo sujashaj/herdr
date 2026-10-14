@@ -1,5 +1,14 @@
 # herdr
 
+> **Fork note:** This is a personal fork of [herdrdev/herdr](https://github.com/herdrdev/herdr). It adds an opt-in **tree mode** sidebar that groups everything as Project → Tab → Pane and removes the Agents section. Turn it on in `config.toml`:
+>
+> ```toml
+> [ui.sidebar]
+> mode = "tree"
+> ```
+>
+> It also names the home folder "home" instead of `~` in the regular sidebar. All changes are on the `tree-mode` branch. Herdr is licensed under Apache-2.0.
+
 
 <p align="center">
   <img src="assets/logo.png" alt="herdr" width="100" />
