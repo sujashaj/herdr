@@ -35,6 +35,8 @@ pub(super) enum TreeRowKind {
     Pane,
     /// Blank row that separates one project from the next.
     Gap,
+    /// Blank row between two tabs of a project; it carries the project's tree line.
+    TabGap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,7 +102,7 @@ impl TreeRow<'_> {
             TreeRowKind::Project => Some(ClientEndpointFocusTarget::Workspace(id)),
             TreeRowKind::Tab => Some(ClientEndpointFocusTarget::Tab(id)),
             TreeRowKind::Pane => Some(ClientEndpointFocusTarget::Pane(id)),
-            TreeRowKind::Gap => None,
+            TreeRowKind::Gap | TreeRowKind::TabGap => None,
         }
     }
 }
@@ -254,6 +256,18 @@ pub(super) fn tree_rows(snapshot: &ClientShellSnapshot) -> Vec<TreeRow<'_>> {
                 .get(tab.tab_id.as_str())
                 .map(Vec::as_slice)
                 .unwrap_or_default();
+            if tab_index > 0 {
+                rows.push(TreeRow {
+                    kind: TreeRowKind::TabGap,
+                    id: "",
+                    label: "",
+                    status: None,
+                    focused: false,
+                    last_child: false,
+                    parent_last: false,
+                    icon: None,
+                });
+            }
             let tab_row = rows.len();
             rows.push(TreeRow {
                 kind: TreeRowKind::Tab,
@@ -324,7 +338,7 @@ pub(super) fn focused_row_index(rows: &[TreeRow<'_>]) -> Option<usize> {
             TreeRowKind::Tab | TreeRowKind::Pane if focused.is_some() && row.focused => {
                 focused = Some(index);
             }
-            TreeRowKind::Tab | TreeRowKind::Pane | TreeRowKind::Gap => {}
+            TreeRowKind::Tab | TreeRowKind::Pane | TreeRowKind::Gap | TreeRowKind::TabGap => {}
         }
     }
     focused
@@ -429,6 +443,10 @@ pub(super) fn render_tree_sidebar(
             continue;
         }
         let rect = Rect::new(body.x, body.y + offset as u16, content_width, 1);
+        if row.kind == TreeRowKind::TabGap {
+            render_tree_row(buffer, rect, row, palette);
+            continue;
+        }
         let selected = row.kind == TreeRowKind::Project
             && state
                 .selected_workspace_id
@@ -562,6 +580,10 @@ fn render_tree_row(buffer: &mut Buffer, rect: Rect, row: &TreeRow<'_>, palette: 
     match row.kind {
         TreeRowKind::Project => {}
         TreeRowKind::Gap => return,
+        TreeRowKind::TabGap => {
+            render::put_segment(buffer, x, rect.y, right, "│", muted);
+            return;
+        }
         TreeRowKind::Tab => {
             x = render::put_segment(buffer, x, rect.y, right, branch(row.last_child), muted);
         }
@@ -647,7 +669,7 @@ fn row_mark(row: &TreeRow<'_>, palette: &Palette) -> Option<(&'static str, Color
             }
             None => None,
         },
-        TreeRowKind::Gap => None,
+        TreeRowKind::Gap | TreeRowKind::TabGap => None,
     }
 }
 
@@ -662,7 +684,9 @@ pub(super) fn label_style(row: &TreeRow<'_>, palette: &Palette) -> Style {
             .fg(palette.mauve)
             .add_modifier(Modifier::BOLD),
         // Lighter than the overlay0 tree lines so pane names stay readable.
-        TreeRowKind::Pane | TreeRowKind::Gap => Style::default().fg(palette.subtext0),
+        TreeRowKind::Pane | TreeRowKind::Gap | TreeRowKind::TabGap => {
+            Style::default().fg(palette.subtext0)
+        }
     }
 }
 
@@ -772,6 +796,7 @@ mod tests {
                         branch(row.last_child)
                     ),
                     TreeRowKind::Gap => return String::new(),
+                    TreeRowKind::TabGap => return "│".to_owned(),
                 };
                 let status = match row.kind {
                     TreeRowKind::Tab => format!(
@@ -812,6 +837,7 @@ mod tests {
                 "├ ● ■ 1",
                 "│ ├ ● ✻ claude",
                 "│ └ >_  bash",
+                "│",
                 "└ · ■ 2",
                 "  ├ >_  shell",
                 "  └ >_  shell",
@@ -824,7 +850,8 @@ mod tests {
         assert!(!rows[2].last_child);
         assert!(rows[3].last_child);
         assert_eq!(rows[0].status, Some(AgentStatus::Working));
-        assert_eq!(rows[4].status, None, "a tab without agents has no dot");
+        assert_eq!(rows[4].kind, TreeRowKind::TabGap);
+        assert_eq!(rows[5].status, None, "a tab without agents has no dot");
     }
 
     #[test]
@@ -837,7 +864,7 @@ mod tests {
             rows[2].label, "claude",
             "the session title only shows once it is locked in as the pane's label"
         );
-        assert_eq!(rows[10].label, "claude");
+        assert_eq!(rows[11].label, "claude");
 
         // A pane label (user-given or the locked session title) wins.
         snapshot.panes[0].label = Some("Resume handoff instructions".into());
@@ -881,7 +908,7 @@ mod tests {
         let rows = tree_rows(&snapshot);
         assert_eq!(rows[0].status, Some(AgentStatus::Blocked));
         assert_eq!(rows[1].status, Some(AgentStatus::Working));
-        assert_eq!(rows[4].status, Some(AgentStatus::Blocked));
+        assert_eq!(rows[5].status, Some(AgentStatus::Blocked));
     }
 
     #[test]
@@ -918,9 +945,9 @@ mod tests {
 
         // Off the focus path: identical styles, no dimming.
         assert_eq!(label_style(&rows[3], &palette), pane, "unfocused pane");
-        assert_eq!(label_style(&rows[4], &palette), tab, "unfocused tab");
+        assert_eq!(label_style(&rows[5], &palette), tab, "unfocused tab");
         assert_eq!(
-            label_style(&rows[8], &palette),
+            label_style(&rows[9], &palette),
             project,
             "unfocused project"
         );
@@ -949,8 +976,10 @@ mod tests {
             rows[2].focus_target(),
             Some(ClientEndpointFocusTarget::Pane("w1:p1".to_owned()))
         );
-        assert_eq!(rows[7].kind, TreeRowKind::Gap);
-        assert_eq!(rows[7].focus_target(), None);
+        assert_eq!(rows[8].kind, TreeRowKind::Gap);
+        assert_eq!(rows[8].focus_target(), None);
+        assert_eq!(rows[4].kind, TreeRowKind::TabGap);
+        assert_eq!(rows[4].focus_target(), None);
     }
 
     #[test]

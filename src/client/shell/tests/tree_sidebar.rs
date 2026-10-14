@@ -225,7 +225,8 @@ fn tree_mode_separates_projects_with_one_blank_row() {
     let frame = state.compose(106, 30).expect("two project tree frame");
     let text = sidebar_text(&frame, 26);
     let rows = text.lines().collect::<Vec<_>>();
-    let is_blank = |row: &str| row.chars().all(|ch| ch == ' ' || ch == '│');
+    // Only the sidebar border may follow; a tab spacer row carries the project's `│` line.
+    let is_blank = |row: &str| row.trim_end_matches('│').chars().all(|ch| ch == ' ');
 
     let first_header = rows
         .iter()
@@ -611,4 +612,34 @@ fn agent_pane_without_a_status_keeps_its_icon_in_place() {
         column_of(&settled, "✻"),
         "{starting:?} vs {settled:?}"
     );
+}
+
+#[test]
+fn tabs_are_separated_by_a_row_that_carries_the_project_line() {
+    let mut state = tree_state(&tree_config());
+    let frame = state.compose(106, 30).expect("tree sidebar frame");
+    let text = sidebar_text(&frame, 26);
+    let rows = text.lines().collect::<Vec<_>>();
+    let second_tab = rows
+        .iter()
+        .position(|row| row.trim_end_matches([' ', '│']) == " └ · ■ 2")
+        .unwrap_or_else(|| panic!("second tab row: {text}"));
+    assert_eq!(
+        rows[second_tab - 1]
+            .trim_end_matches(' ')
+            .chars()
+            .take(2)
+            .collect::<String>(),
+        " │",
+        "{text}"
+    );
+    assert!(
+        rows[second_tab - 1]
+            .chars()
+            .skip(2)
+            .take(20)
+            .all(|ch| ch == ' '),
+        "{text}"
+    );
+    assert!(rows[second_tab - 2].contains("bash"), "{text}");
 }
