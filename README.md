@@ -8,6 +8,10 @@
 > ```
 >
 > It also names the home folder "home" instead of `~` in the regular sidebar. All changes are on the `tree-mode` branch. Herdr is licensed under Apache-2.0.
+>
+> ![Tree mode sidebar demo](assets/tree-mode.gif)
+>
+> <sub>Demo uses simulated agent sessions.</sub>
 
 
 <p align="center">
